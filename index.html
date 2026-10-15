@@ -58,7 +58,7 @@ button{cursor:pointer}
 .title .save{font-size:13px;color:var(--muted);max-width:52ch}
 .title .save[data-state="saved"]{color:var(--green)}
 .title .save[data-state="error"]{color:var(--red)}
-.sync-btn{border-color:var(--line);background:var(--surface);color:var(--ink)}
+.icon-btn.sync-btn{border-color:var(--line);background:var(--surface);color:var(--ink)}
 .title .save[data-state="saving"]{color:var(--accent)}
 
 .stats{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch}
@@ -89,33 +89,35 @@ button{cursor:pointer}
 }
 .papers .step button:hover{background:color-mix(in srgb,var(--bg) 14%,transparent)}
 
-/* ---------- board ---------- */
+/* ---------- board: weeks are grid columns, topics are placed across them ---------- */
 .board-wrap{overflow-x:auto;padding:4px 0 28px;-webkit-overflow-scrolling:touch}
-.board{--col:310px;--gap:14px;display:flex;gap:var(--gap);padding:0 24px;width:max-content;align-items:flex-start}
-.week{
-  --span:1;
-  flex:none; width:calc(var(--span) * var(--col) + (var(--span) - 1) * var(--gap)); background:var(--surface); border:1px solid var(--line);
-  border-radius:14px; display:flex; flex-direction:column;
+.board{
+  --col:310px; --gap:14px; --weeks:15;
+  display:grid; grid-template-columns:repeat(var(--weeks), var(--col));
+  column-gap:var(--gap); row-gap:10px; align-items:start;
+  padding:0 24px; width:max-content;
 }
-.week.now{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.week-head{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:14px 16px 12px;border-bottom:1px solid var(--line);
+.wk-bg{align-self:stretch;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.wk-bg.now{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.wk-head{
+  display:flex;flex-direction:column;gap:2px;margin:1px 1px 0;
+  padding:13px 15px 11px;border-bottom:1px solid var(--line);
 }
-.week-head h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}
-.week-head .dates{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.wh-main{display:flex;flex-direction:column;gap:2px;min-width:0}
-.span-ctl{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
-.span-ctl button{border:0;background:transparent;color:var(--ink);width:28px;height:26px;font-size:16px;line-height:1;display:grid;place-items:center}
+.wk-head h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.wk-head .dates{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.wk-head .badge{font-size:12px;font-weight:600;color:var(--accent);margin-left:6px}
+.board > .topic{margin:0 10px;position:relative;z-index:1}
+.topic.long{
+  background:linear-gradient(90deg,var(--accent-soft),transparent 55%) var(--surface-2);
+  border-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+}
+.board > .add-topic{margin:2px 10px 12px;width:auto}
+.timing{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;margin-top:6px}
+.span-ctl{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none;background:var(--surface)}
+.span-ctl button{border:0;background:transparent;color:var(--ink);width:28px;height:26px;font-size:15px;line-height:1;display:grid;place-items:center}
 .span-ctl button:hover:not(:disabled){background:var(--accent-soft);color:var(--accent)}
 .span-ctl button:disabled{color:var(--line);cursor:default}
-.span-ctl span{font-size:12.5px;font-weight:600;padding:0 6px;border-left:1px solid var(--line);border-right:1px solid var(--line);line-height:26px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.week.multi .week-head{background:linear-gradient(90deg,var(--accent-soft),transparent 70%);border-radius:14px 14px 0 0}
-.week.multi .topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));align-items:start}
-.week-head .badge{font-size:12px;font-weight:600;color:var(--accent);margin-left:6px}
-.topics{display:flex;flex-direction:column;gap:12px;padding:12px}
-.empty{font-size:13.5px;color:var(--muted);padding:6px 4px 2px}
-
+.span-ctl span{font-size:12.5px;font-weight:600;padding:0 7px;border-left:1px solid var(--line);border-right:1px solid var(--line);line-height:26px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .topic{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 10px 8px}
 .topic-row{display:flex;align-items:center;gap:6px}
 .topic-name{
@@ -195,8 +197,7 @@ dialog input:focus{outline:none;border-color:var(--accent)}
 @media (prefers-reduced-motion: reduce){.bar i{transition:none}}
 @media (max-width:560px){
   .top{padding:20px 16px 14px}
-  .board{padding:0 16px}
-  .board{--col:286px}
+  .board{--col:286px;padding:0 16px}
   .hint{padding:0 16px 20px}
 }
 
@@ -252,7 +253,7 @@ dialog .linkline button{margin-left:6px}
 
 <div id="empty"></div>
 <div class="board-wrap" id="wrap"><div class="board" id="board"></div></div>
-<p class="hint">Use the − / + next to a block's dates to make it shorter or longer; extending pulls in the following week, and its topics come along. Click a progress bar to cycle its status. Paste a URL into the link column to get an open button.</p>
+<p class="hint">Each topic has its own timing: use ← → to move it to another week and − / + to change how many weeks it runs. Topics that overlap in time stack in separate rows. Click a progress bar to cycle its status, and paste a URL into the link column to get an open button.</p>
 
 <dialog id="gh-dialog" aria-labelledby="gh-title">
   <form id="gh-form">
@@ -327,15 +328,17 @@ dialog .linkline button{margin-left:6px}
   function validSlug(s){ return /^[a-z0-9][a-z0-9-]{0,47}$/.test(s); }
   function isUrl(s){ return /^https?:\/\/\S+$/i.test(String(s).trim()); }
 
-  function blankTopic(){ return { id: uid(), title: "", status: 0, resources: [] }; }
-  function normTopic(t){
+  function blankTopic(start){ return { id: uid(), title: "", status: 0, resources: [], start: start || 0, span: 1 }; }
+  function normTopic(t, start, span){
     t = t || {};
     return {
       id: String(t.id || uid()), title: String(t.title || ""),
       status: [0,1,2].indexOf(t.status) >= 0 ? t.status : 0,
       resources: Array.isArray(t.resources) ? t.resources.map(function(r){
         r = r || {}; return { id: String(r.id || uid()), name: String(r.name || ""), link: String(r.link || "") };
-      }) : []
+      }) : [],
+      start: start != null ? start : Math.max(0, parseInt(t.start, 10) || 0),
+      span: span != null ? span : Math.max(1, parseInt(t.span, 10) || 1)
     };
   }
   function normalize(raw, fb){
@@ -344,42 +347,52 @@ dialog .linkline button{margin-left:6px}
     var start = parseISO(raw.start) ? raw.start : (fb.start || toISO(new Date()));
     var end = parseISO(raw.end) ? raw.end : (fb.end || toISO(addDays(parseISO(start), 7*15 - 1)));
     if (dayDiff(parseISO(start), parseISO(end)) < 6) end = toISO(addDays(parseISO(start), 6));
-    var blocks = [];
-    if (Array.isArray(raw.blocks)){
-      blocks = raw.blocks.map(function(b){
-        b = b || {};
-        return { id: String(b.id || uid()), span: Math.max(1, parseInt(b.span, 10) || 1),
-                 topics: Array.isArray(b.topics) ? b.topics.map(normTopic) : [] };
+    var topics = [];
+    if (Array.isArray(raw.topics)){
+      topics = raw.topics.map(function(t){ return normTopic(t); });
+    } else if (Array.isArray(raw.blocks)){            // earlier block format
+      var w = 0;
+      raw.blocks.forEach(function(b){
+        var sp = Math.max(1, parseInt(b && b.span, 10) || 1);
+        ((b && b.topics) || []).forEach(function(t){ topics.push(normTopic(t, w, sp)); });
+        w += sp;
       });
-    } else if (Array.isArray(raw.weeks)){          // older one-column-per-week format
-      blocks = raw.weeks.map(function(w){ return { id: uid(), span: 1, topics: Array.isArray(w) ? w.map(normTopic) : [] }; });
+    } else if (Array.isArray(raw.weeks)){             // original one-column-per-week format
+      raw.weeks.forEach(function(wk, i){ (Array.isArray(wk) ? wk : []).forEach(function(t){ topics.push(normTopic(t, i, 1)); }); });
     }
-    fitBlocks(blocks, weekCount(start, end));
-    return { version: 3, title: String(raw.title || fb.title || "Study tracker"), start: start, end: end,
-             papers: Math.max(0, parseInt(raw.papers, 10) || 0), blocks: blocks };
+    fitTopics(topics, weekCount(start, end));
+    return { version: 4, title: String(raw.title || fb.title || "Study tracker"), start: start, end: end,
+             papers: Math.max(0, parseInt(raw.papers, 10) || 0), topics: topics };
   }
-  function newBlock(){ return { id: uid(), span: 1, topics: [] }; }
-  // Make the blocks cover exactly n weeks. Trimming never drops topics: they move into the last block that remains.
-  function fitBlocks(blocks, n){
-    var total = blocks.reduce(function(s, b){ return s + b.span; }, 0);
-    while (total < n){ blocks.push(newBlock()); total++; }
-    while (total > n){
-      var last = blocks[blocks.length - 1];
-      if (last.span > 1){ last.span--; total--; continue; }
-      blocks.pop(); total--;
-      if (last.topics.length && blocks.length){ var prev = blocks[blocks.length - 1]; prev.topics = prev.topics.concat(last.topics); }
-    }
-    if (!blocks.length) blocks.push(newBlock());
-    return blocks;
+  // Keep every topic inside the tracker's n weeks (never drops a topic).
+  function fitTopics(topics, n){
+    topics.forEach(function(t){
+      t.start = Math.min(Math.max(0, t.start), n - 1);
+      t.span = Math.max(1, Math.min(t.span, n - t.start));
+    });
+    return topics;
   }
-  function totalWeeks(d){ return d.blocks.reduce(function(s, b){ return s + b.span; }, 0); }
+  function totalWeeks(d){ return weekCount(d.start, d.end); }
   function hasContent(d){
     if (!d || typeof d !== "object") return false;
     if ((parseInt(d.papers, 10) || 0) > 0) return true;
-    var groups = Array.isArray(d.blocks) ? d.blocks.map(function(b){ return b && b.topics; }) : d.weeks;
+    var groups = Array.isArray(d.topics) ? [d.topics] : Array.isArray(d.blocks) ? d.blocks.map(function(b){ return b && b.topics; }) : d.weeks;
     return Array.isArray(groups) && groups.some(function(w){
       return Array.isArray(w) && w.some(function(t){ return t && (t.title || (t.resources && t.resources.length) || t.status); });
     });
+  }
+  // Stack overlapping topics into rows ("lanes"): earliest start first, then the order they were added.
+  function layoutLanes(topics){
+    var order = topics.map(function(t, i){ return { t: t, i: i }; })
+      .sort(function(a, b){ return a.t.start - b.t.start || a.i - b.i; });
+    var laneEnd = [], lane = new Map();
+    order.forEach(function(o){
+      var L = laneEnd.findIndex(function(e){ return e < o.t.start; });
+      if (L < 0){ L = laneEnd.length; laneEnd.push(-1); }
+      laneEnd[L] = o.t.start + o.t.span - 1;
+      lane.set(o.t, L);
+    });
+    return { lane: lane, count: laneEnd.length };
   }
   function weekRange(d, i){
     var s = addDays(parseISO(d.start), i * 7);
@@ -594,7 +607,7 @@ dialog .linkline button{margin-left:6px}
       try {
         var remote = await GH.load(slug);
         if (cached && cached.dirty){ data = normalize(cached.data); dirty = true; }
-        else if (remote){ data = normalize(remote); if (!Array.isArray(remote.blocks)) dirty = true; }  // save once in the new format
+        else if (remote){ data = normalize(remote); if (!Array.isArray(remote.topics)) dirty = true; }  // save once in the new format
       } catch(e){
         failed = true; setSave("error", errMsg(e && e.status));
         if (cached){ data = normalize(cached.data); dirty = !!cached.dirty; }
@@ -730,7 +743,10 @@ dialog .linkline button{margin-left:6px}
     );
   }
 
-  function renderTopic(t, block){
+  function weekLabel(a, b){ return a === b ? "Week " + (a + 1) : "Wk " + (a + 1) + "\u2013" + (b + 1); }
+
+  function renderTopic(t, n){
+    var last = t.start + t.span - 1, atEnd = last >= n - 1;
     var bar = h("button", { type: "button", class: "bar", dataset: { s: String(t.status) },
       "aria-label": "Status: " + STATUS[t.status] + ". Click to change.",
       onclick: function(){ t.status = (t.status + 1) % 3; touch(); render(); } }, h("i"));
@@ -740,14 +756,28 @@ dialog .linkline button{margin-left:6px}
           onclick: function(){ t.status = s; touch(); render(); } }, label);
       }));
     var remove = armButton(h("button", { type: "button", class: "icon-btn" }), "Remove", "Confirm", function(){
-      block.topics = block.topics.filter(function(x){ return x !== t; }); touch(); render();
+      cur.data.topics = cur.data.topics.filter(function(x){ return x !== t; }); touch(); render();
     });
-    return h("div", { class: "topic", dataset: { id: t.id } },
+    var timing = h("div", { class: "timing" },
+      h("div", { class: "span-ctl", role: "group", "aria-label": "Move topic" },
+        h("button", { type: "button", title: "Move one week earlier", "aria-label": "Move one week earlier", disabled: t.start === 0,
+          onclick: function(){ t.start--; touch(); render(); } }, "\u2190"),
+        h("span", { text: weekLabel(t.start, last) }),
+        h("button", { type: "button", title: "Move one week later", "aria-label": "Move one week later", disabled: atEnd,
+          onclick: function(){ t.start++; touch(); render(); } }, "\u2192")),
+      h("div", { class: "span-ctl", role: "group", "aria-label": "Topic length" },
+        h("button", { type: "button", title: "Shorten by one week", "aria-label": "Shorten by one week", disabled: t.span < 2,
+          onclick: function(){ t.span--; touch(); render(); } }, "\u2212"),
+        h("span", { text: t.span + " wk" }),
+        h("button", { type: "button", title: atEnd ? "Already runs to the last week" : "Lengthen by one week", "aria-label": "Lengthen by one week", disabled: atEnd,
+          onclick: function(){ t.span++; touch(); render(); } }, "+"))
+    );
+    return h("div", { class: "topic" + (t.span > 1 ? " long" : ""), dataset: { id: t.id } },
       h("div", { class: "topic-row" },
         h("input", { type: "text", class: "topic-name", value: t.title, placeholder: "Topic name", "aria-label": "Topic name",
           oninput: function(e){ t.title = e.target.value; touch(); } }),
         remove),
-      bar, seg, renderResources(t),
+      timing, bar, seg, renderResources(t),
       h("button", { type: "button", class: "icon-btn add-res",
         onclick: function(){
           t.resources.push({ id: uid(), name: "", link: "" }); touch(); render();
@@ -756,54 +786,11 @@ dialog .linkline button{margin-left:6px}
     );
   }
 
-  function extendBlock(bi){
-    var bl = cur.data.blocks, next = bl[bi + 1];
-    if (!next) return;
-    bl[bi].span++;
-    if (next.span > 1) next.span--;
-    else { bl[bi].topics = bl[bi].topics.concat(next.topics); bl.splice(bi + 1, 1); }
-    touch(); render();
-  }
-  function shortenBlock(bi){
-    var bl = cur.data.blocks;
-    if (bl[bi].span < 2) return;
-    bl[bi].span--; bl.splice(bi + 1, 0, newBlock());
-    touch(); render();
-  }
-
-  function renderBlock(block, bi, first, now){
-    var d = cur.data, last = first + block.span - 1, isLast = bi === d.blocks.length - 1;
-    var r1 = weekRange(d, first), r2 = weekRange(d, last), isNow = now >= first && now <= last;
-    var label = block.span === 1 ? "Week " + (first + 1) : "Weeks " + (first + 1) + "–" + (last + 1);
-    var ctl = h("div", { class: "span-ctl", role: "group", "aria-label": "Length of " + label },
-      h("button", { type: "button", title: "Shorten by one week", "aria-label": "Shorten by one week",
-        disabled: block.span < 2, onclick: function(){ shortenBlock(bi); } }, "−"),
-      h("span", { text: block.span + " wk" }),
-      h("button", { type: "button", title: isLast ? "This is the last week" : "Extend into the next week", "aria-label": "Extend by one week",
-        disabled: isLast, onclick: function(){ extendBlock(bi); } }, "+")
-    );
-    var el = h("section", { class: "week" + (isNow ? " now" : "") + (block.span > 1 ? " multi" : ""), "aria-label": label },
-      h("div", { class: "week-head" },
-        h("div", { class: "wh-main" },
-          h("h2", null, label, isNow ? h("span", { class: "badge", text: "this week" }) : null),
-          h("span", { class: "dates", text: fmt(r1.s) + " – " + fmt(r2.e) })),
-        ctl),
-      h("div", { class: "topics" },
-        block.topics.length ? block.topics.map(function(t){ return renderTopic(t, block); })
-                            : h("div", { class: "empty", text: "Nothing planned yet." })),
-      h("button", { type: "button", class: "add-topic",
-        onclick: function(){
-          var t = blankTopic(); block.topics.push(t); touch(); render();
-          var f = board.querySelector('[data-id="' + t.id + '"] .topic-name'); if (f) f.focus();
-        } }, "+ Add topic")
-    );
-    el.style.setProperty("--span", block.span);
-    return el;
-  }
+  function place(el, col, row){ el.style.gridColumn = col; el.style.gridRow = row; return el; }
 
   function renderTally(){
     var c = [0,0,0];
-    if (cur) cur.data.blocks.forEach(function(b){ b.topics.forEach(function(t){ c[t.status]++; }); });
+    if (cur) cur.data.topics.forEach(function(t){ c[t.status]++; });
     document.getElementById("t-todo").textContent = c[0];
     document.getElementById("t-prog").textContent = c[1];
     document.getElementById("t-done").textContent = c[2];
@@ -811,23 +798,45 @@ dialog .linkline button{margin-left:6px}
 
   function render(){
     if (!cur) return;
-    var d = cur.data, now = currentWeek(d), n = totalWeeks(d), first = 0;
+    var d = cur.data, now = currentWeek(d), n = totalWeeks(d), lay = layoutLanes(d.topics);
     document.body.classList.remove("no-tracker");
     emptyEl.replaceChildren();
     document.getElementById("t-title").textContent = d.title;
     document.getElementById("t-dates").textContent =
       fmtLong(parseISO(d.start)) + " to " + fmtLong(parseISO(d.end)) + ", " + n + (n === 1 ? " week" : " weeks");
     document.title = d.title;
-    board.replaceChildren.apply(board, d.blocks.map(function(b, i){ var el = renderBlock(b, i, first, now); first += b.span; return el; }));
+
+    var lastRow = lay.count + 2, els = [];
+    board.style.setProperty("--weeks", n);
+    board.style.gridTemplateRows = "auto" + (lay.count ? " repeat(" + lay.count + ", auto)" : "") + " auto";
+    for (var i = 0; i < n; i++){
+      var r = weekRange(d, i);
+      els.push(place(h("div", { class: "wk-bg" + (i === now ? " now" : ""), "aria-hidden": "true" }), String(i + 1), "1 / -1"));
+      els.push(place(h("div", { class: "wk-head", dataset: { w: String(i) } },
+        h("h2", null, "Week " + (i + 1), i === now ? h("span", { class: "badge", text: "this week" }) : null),
+        h("span", { class: "dates", text: fmt(r.s) + " \u2013 " + fmt(r.e) })), String(i + 1), "1"));
+    }
+    d.topics.forEach(function(t){
+      els.push(place(renderTopic(t, n), (t.start + 1) + " / span " + t.span, String(lay.lane.get(t) + 2)));
+    });
+    for (var j = 0; j < n; j++){
+      (function(w){
+        els.push(place(h("button", { type: "button", class: "add-topic", "aria-label": "Add a topic in week " + (w + 1),
+          onclick: function(){
+            var t = blankTopic(w); cur.data.topics.push(t); touch(); render();
+            var f = board.querySelector('[data-id="' + t.id + '"] .topic-name'); if (f) f.focus();
+          } }, "+ Add topic"), String(w + 1), String(lastRow)));
+      })(j);
+    }
+    board.replaceChildren.apply(board, els);
     papersEl.value = d.papers;
     renderTally();
   }
   function scrollToNow(){
     if (!cur) return;
     var now = currentWeek(cur.data), wrap = document.getElementById("wrap");
-    var col = null, first = 0;
-    if (now > 0) cur.data.blocks.some(function(b, i){ if (now < first + b.span){ col = board.children[i]; return true; } first += b.span; return false; });
-    wrap.scrollLeft = col ? Math.max(0, col.offsetLeft - 24) : 0;
+    var head = now > 0 ? board.querySelector('.wk-head[data-w="' + now + '"]') : null;
+    wrap.scrollLeft = head ? Math.max(0, head.offsetLeft - 24) : 0;
   }
 
   // ---------- papers ----------
@@ -970,7 +979,7 @@ dialog .linkline button{margin-left:6px}
       if (has(slug)){ tMsg.textContent = "You already have a tracker with that link name."; return; }
       await flush();
       var data = normalize({ title: title, start: start, end: end });
-      data.blocks[0].topics.push(blankTopic());
+      data.topics.push(blankTopic(0));
       trackers.push({ slug: slug, title: title }); storeIndex();
       cur = { slug: slug, data: data, dirty: !!gh, rev: 1 };
       LS.set(cacheKey(slug), { data: data, dirty: !!gh });
@@ -982,14 +991,14 @@ dialog .linkline button{margin-left:6px}
     }
 
     // edit
-    var blocks = cur.data.blocks, w0 = 0, lastStart = -1;
-    blocks.forEach(function(b){ if (b.topics.length) lastStart = w0; w0 += b.span; });
-    if (n < lastStart + 1){
-      tMsg.textContent = "Week " + (lastStart + 1) + " still has topics, and that date range would cut it off. Remove them first, or pick a later end date.";
+    var late = cur.data.topics.filter(function(t){ return t.start >= n; });
+    if (late.length){
+      var wk = Math.min.apply(null, late.map(function(t){ return t.start; })) + 1;
+      tMsg.textContent = "A topic starts in week " + wk + ", which that date range would cut off. Move or remove it first, or pick a later end date.";
       return;
     }
     cur.data.title = title; cur.data.start = start; cur.data.end = end;
-    fitBlocks(blocks, n);
+    fitTopics(cur.data.topics, n);
     trackers.forEach(function(t){ if (t.slug === cur.slug) t.title = title; });
     storeIndex(); closeDlg(trDlg);
     renderSelect(); render(); touch();
