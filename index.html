@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>15-week progress tracker</title>
+<title>Study trackers</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -52,7 +52,7 @@ button{cursor:pointer}
   display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
   gap:20px 32px; padding:28px 24px 18px; max-width:100%;
 }
-.title h1{margin:0;font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.title h1{margin:10px 0 0;font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.02em;line-height:1.05}
 .title p{margin:6px 0 0;color:var(--muted);font-size:15px}
 .sync-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:10px}
 .title .save{font-size:13px;color:var(--muted);max-width:52ch}
@@ -190,13 +190,38 @@ dialog input:focus{outline:none;border-color:var(--accent)}
   .week{width:286px}
   .hint{padding:0 16px 20px}
 }
+
+.tracker-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tracker-bar select{
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;
+  padding:5px 28px 5px 10px;font-size:13.5px;font-weight:600;max-width:260px
+}
+body.no-tracker .stats,body.no-tracker #settings-btn,body.no-tracker .hint{display:none}
+body.no-list #tracker-select{display:none}
+.empty-state{
+  margin:8px 24px 40px;max-width:440px;padding:28px;background:var(--surface);
+  border:1px dashed var(--line);border-radius:14px
+}
+.empty-state h2{margin:0 0 6px;font-size:20px}
+.empty-state p{margin:0 0 16px;color:var(--muted)}
+dialog .row{display:flex;gap:10px}
+dialog .row label{flex:1}
+dialog input[type=date]{font-variant-numeric:tabular-nums}
+dialog .linkline{margin:8px 0 0;font-size:12.5px;color:var(--muted);word-break:break-all}
+dialog .linkline b{color:var(--ink);font-weight:600}
+dialog .linkline button{margin-left:6px}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="title">
-    <h1>15-week progress tracker</h1>
-    <p>Oct 15, 2026 to Feb 1, 2027</p>
+    <div class="tracker-bar">
+      <select id="tracker-select" aria-label="Choose a tracker"></select>
+      <button type="button" class="icon-btn sync-btn" id="new-btn">New tracker</button>
+      <button type="button" class="icon-btn sync-btn" id="settings-btn">Tracker settings</button>
+    </div>
+    <h1 id="t-title">Study trackers</h1>
+    <p id="t-dates"></p>
     <div class="sync-row"><span class="save" id="save" data-state="idle">Loading…</span><button type="button" class="icon-btn sync-btn" id="sync-btn">Connect GitHub</button></div>
   </div>
   <div class="stats">
@@ -216,13 +241,16 @@ dialog input:focus{outline:none;border-color:var(--accent)}
   </div>
 </header>
 
+<div id="empty"></div>
 <div class="board-wrap" id="wrap"><div class="board" id="board"></div></div>
+<p class="hint">Click a progress bar to cycle its status, or pick one below it. Paste a URL into the link column to get an open button.</p>
+
 <dialog id="gh-dialog" aria-labelledby="gh-title">
   <form id="gh-form">
     <h2 id="gh-title">Sync with GitHub</h2>
-    <p class="dlg-note">Your tracker data is saved as data.json in a private repo, so every device that connects sees the same entries.</p>
+    <p class="dlg-note">Each tracker is saved as its own file in the trackers folder of one private repo, so every device that connects sees the same trackers.</p>
     <label>GitHub username<input id="gh-owner" type="text" autocomplete="username" autocapitalize="off" spellcheck="false"></label>
-    <label>Private data repo<input id="gh-repo" type="text" autocapitalize="off" spellcheck="false"></label>
+    <label>Private data repo<input id="gh-repo" type="text" autocapitalize="off" spellcheck="false" placeholder="prelim-study-tracker-data"></label>
     <label>Fine-grained access token<input id="gh-token" type="password" autocomplete="off" spellcheck="false"></label>
     <p class="dlg-note">The token is stored only in this browser. Give it access to the data repo alone, with Contents set to Read and write.</p>
     <p class="dlg-msg" id="gh-msg" role="status"></p>
@@ -234,84 +262,125 @@ dialog input:focus{outline:none;border-color:var(--accent)}
     </div>
   </form>
 </dialog>
-<p class="hint">Click a progress bar to cycle its status, or pick one below it. Paste a URL into the link column to get an open button.</p>
+
+<dialog id="tr-dialog" aria-labelledby="tr-title">
+  <form id="tr-form">
+    <h2 id="tr-title">New tracker</h2>
+    <label>Name<input id="tr-name" type="text" required placeholder="Prelim study tracker"></label>
+    <div class="row">
+      <label>Start date<input id="tr-start" type="date" required></label>
+      <label>End date<input id="tr-end" type="date" required></label>
+    </div>
+    <p class="dlg-note" id="tr-weeks"></p>
+    <label id="tr-slug-wrap">Link name<input id="tr-slug" type="text" autocapitalize="off" spellcheck="false" pattern="[a-z0-9][a-z0-9\-]{0,47}"></label>
+    <p class="linkline" id="tr-link"></p>
+    <p class="dlg-msg" id="tr-msg" role="status"></p>
+    <div class="dlg-actions">
+      <button type="button" class="icon-btn danger" id="tr-delete" hidden>Delete tracker</button>
+      <span style="flex:1"></span>
+      <button type="button" class="icon-btn" id="tr-close">Cancel</button>
+      <button type="submit" class="primary" id="tr-submit">Create</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 (function(){
   "use strict";
-  var WEEKS = 15;
-  var START = new Date(2026, 9, 15);   // Oct 15, 2026
-  var END   = new Date(2027, 1, 1);    // Feb 1, 2027
-  var LS_KEY = "study-tracker-v1";
   var STATUS = ["Not started", "In progress", "Finished"];
+  var DIR = "trackers";
+  var LEGACY = { title: "Prelim study tracker", start: "2026-10-15", end: "2027-02-01" };
+  var LOCAL_MSG = "Saved in this browser only. Connect GitHub to sync across devices.";
 
-  function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2))); }
+  // ---------- small utilities ----------
+  var LS = {
+    get: function(k){ try { var v = localStorage.getItem(k); return v == null ? null : JSON.parse(v); } catch(e){ return null; } },
+    set: function(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+    del: function(k){ try { localStorage.removeItem(k); } catch(e){} }
+  };
+  function uid(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)); }
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function toISO(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function parseISO(s){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; }
+  function addDays(d, n){ var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function dayDiff(a, b){ return Math.round((b - a) / 86400000); }
+  function weekCount(start, end){
+    var s = parseISO(start), e = parseISO(end);
+    if (!s || !e) return 1;
+    return Math.max(1, Math.floor((dayDiff(s, e) + 1) / 7));
+  }
+  function fmt(d){ return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); }
+  function fmtLong(d){ return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+  function slugify(s){
+    return String(s).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "tracker";
+  }
+  function validSlug(s){ return /^[a-z0-9][a-z0-9-]{0,47}$/.test(s); }
+  function isUrl(s){ return /^https?:\/\/\S+$/i.test(String(s).trim()); }
+
   function blankTopic(){ return { id: uid(), title: "", status: 0, resources: [] }; }
-  function blankState(){
-    var w = []; for (var i=0;i<WEEKS;i++) w.push([]);
-    w[0].push(blankTopic());
-    return { papers: 0, weeks: w };
+  function normTopic(t){
+    t = t || {};
+    return {
+      id: String(t.id || uid()), title: String(t.title || ""),
+      status: [0,1,2].indexOf(t.status) >= 0 ? t.status : 0,
+      resources: Array.isArray(t.resources) ? t.resources.map(function(r){
+        r = r || {}; return { id: String(r.id || uid()), name: String(r.name || ""), link: String(r.link || "") };
+      }) : []
+    };
   }
-  function normalize(s){
-    var out = blankState(); out.weeks = [];
-    if (!s || typeof s !== "object") return blankState();
-    out.papers = Math.max(0, parseInt(s.papers,10) || 0);
-    for (var i=0;i<WEEKS;i++){
-      var src = (s.weeks && Array.isArray(s.weeks[i])) ? s.weeks[i] : [];
-      out.weeks.push(src.map(function(t){
-        return {
-          id: String(t.id || uid()), title: String(t.title || ""),
-          status: [0,1,2].indexOf(t.status) >= 0 ? t.status : 0,
-          resources: Array.isArray(t.resources) ? t.resources.map(function(r){
-            return { id: String(r.id || uid()), name: String(r.name || ""), link: String(r.link || "") };
-          }) : []
-        };
-      }));
+  function normalize(raw, fb){
+    raw = (raw && typeof raw === "object") ? raw : {};
+    fb = fb || {};
+    var start = parseISO(raw.start) ? raw.start : (fb.start || toISO(new Date()));
+    var end = parseISO(raw.end) ? raw.end : (fb.end || toISO(addDays(parseISO(start), 7*15 - 1)));
+    if (dayDiff(parseISO(start), parseISO(end)) < 6) end = toISO(addDays(parseISO(start), 6));
+    var n = weekCount(start, end), weeks = [];
+    for (var i = 0; i < n; i++){
+      var src = (Array.isArray(raw.weeks) && Array.isArray(raw.weeks[i])) ? raw.weeks[i] : [];
+      weeks.push(src.map(normTopic));
     }
-    return out;
+    return { version: 2, title: String(raw.title || fb.title || "Study tracker"), start: start, end: end,
+             papers: Math.max(0, parseInt(raw.papers, 10) || 0), weeks: weeks };
   }
-
-  // ---------- dates ----------
-  function addDays(d,n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
-  function fmt(d){ return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
-  function weekRange(i){
-    var s = addDays(START, i*7);
-    var e = (i === WEEKS-1) ? END : addDays(s, 6);
-    return { s:s, e:e };
+  function hasContent(d){
+    if (!d || typeof d !== "object") return false;
+    if ((parseInt(d.papers, 10) || 0) > 0) return true;
+    return Array.isArray(d.weeks) && d.weeks.some(function(w){
+      return Array.isArray(w) && w.some(function(t){ return t && (t.title || (t.resources && t.resources.length) || t.status); });
+    });
   }
-  function currentWeek(){
+  function weekRange(d, i){
+    var s = addDays(parseISO(d.start), i * 7);
+    var e = (i === d.weeks.length - 1) ? parseISO(d.end) : addDays(s, 6);
+    return { s: s, e: e };
+  }
+  function currentWeek(d){
     var t = new Date(); t.setHours(0,0,0,0);
-    for (var i=0;i<WEEKS;i++){ var r=weekRange(i); if (t>=r.s && t<=r.e) return i; }
+    for (var i = 0; i < d.weeks.length; i++){ var r = weekRange(d, i); if (t >= r.s && t <= r.e) return i; }
     return -1;
   }
-  var NOW = currentWeek();
 
-  // ---------- state & saving (GitHub sync) ----------
-  var GH_KEY = "study-tracker-github", UNSYNCED_KEY = "study-tracker-unsynced";
-  var state = blankState(), dirty = false, timer = null, saving = false, pending = false, remoteSha = null;
-  var gh = null;
-  try { var cached = localStorage.getItem(LS_KEY); if (cached) state = normalize(JSON.parse(cached)); } catch(e){}
-  try { gh = JSON.parse(localStorage.getItem(GH_KEY) || "null"); } catch(e){}
-  try { dirty = localStorage.getItem(UNSYNCED_KEY) === "1"; } catch(e){}
-
-  var saveEl = document.getElementById("save");
-  function setSave(st, text){ saveEl.dataset.state = st; saveEl.textContent = text; }
-  function saveLocal(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){} }
-  function markDirty(v){ dirty = v; try { localStorage.setItem(UNSYNCED_KEY, v ? "1" : "0"); } catch(e){} }
-  var LOCAL_MSG = "Saved in this browser only. Connect GitHub to sync across devices.";
+  // ---------- GitHub ----------
+  var gh = LS.get("st2:gh");
+  var shas = {};
+  function scope(){ return gh ? "gh:" + gh.owner.toLowerCase() + "/" + gh.repo.toLowerCase() : "local"; }
+  function cacheKey(slug){ return "st2:cache:" + scope() + ":" + slug; }
+  function indexKey(){ return "st2:index:" + scope(); }
+  function lastKey(){ return "st2:last:" + scope(); }
 
   function b64encode(str){
     var bytes = new TextEncoder().encode(str), bin = "";
-    for (var i=0;i<bytes.length;i+=0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000));
+    for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
     return btoa(bin);
   }
   function b64decode(b64){
-    var bin = atob(String(b64).replace(/\s/g,"")), bytes = new Uint8Array(bin.length);
-    for (var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    var bin = atob(String(b64).replace(/\s/g, "")), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return new TextDecoder().decode(bytes);
   }
   function repoPath(){ return "/repos/" + encodeURIComponent(gh.owner) + "/" + encodeURIComponent(gh.repo); }
-  function filePath(){ return repoPath() + "/contents/data.json"; }
+  function fileUrl(slug){ return repoPath() + "/contents/" + DIR + "/" + encodeURIComponent(slug) + ".json"; }
   function api(path, opts){
     opts = opts || {};
     var headers = { "Authorization": "Bearer " + gh.token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
@@ -327,97 +396,217 @@ dialog input:focus{outline:none;border-color:var(--accent)}
     if (status === 404) return "Can't find that repo, or the token doesn't have access to it.";
     return "Couldn't reach GitHub. Your changes are kept in this browser and will sync on your next edit.";
   }
-  async function pull(){
-    var r = await api(filePath());
-    if (r.status === 404) { remoteSha = null; return null; }
-    if (!r.ok) throw { status: r.status };
-    var j = await r.json(); remoteSha = j.sha;
-    return JSON.parse(b64decode(j.content));
-  }
-  async function push(retry, keepalive){
-    var body = { message: "Update tracker", content: b64encode(JSON.stringify(state, null, 1)) };
-    if (remoteSha) body.sha = remoteSha;
-    var r = await api(filePath(), { method: "PUT", body: body, keepalive: keepalive });
-    if ((r.status === 409 || r.status === 422) && !retry){
-      var x = await api(filePath());
-      if (x.ok) remoteSha = (await x.json()).sha; else if (x.status === 404) remoteSha = null;
-      return push(true, keepalive);
+  function byTitle(a, b){ return a.title.localeCompare(b.title); }
+
+  var GH = {
+    check: async function(){ var r = await api(repoPath()); if (!r.ok) throw { status: r.status }; },
+    get: async function(path){
+      var r = await api(path);
+      if (r.status === 404) return null;
+      if (!r.ok) throw { status: r.status };
+      return r.json();
+    },
+    list: async function(){
+      var dir = await GH.get(repoPath() + "/contents/" + DIR);
+      var files = Array.isArray(dir) ? dir.filter(function(f){ return f.type === "file" && /\.json$/i.test(f.name); }) : [];
+      if (!files.length){
+        var mig = await GH.migrateLegacy();
+        return mig ? [mig] : [];
+      }
+      var out = await Promise.all(files.map(async function(f){
+        var slug = f.name.replace(/\.json$/i, "");
+        try {
+          var j = await GH.get(fileUrl(slug));
+          var d = j ? JSON.parse(b64decode(j.content)) : {};
+          return { slug: slug, title: String(d.title || slug) };
+        } catch(e){ return { slug: slug, title: slug }; }
+      }));
+      return out.sort(byTitle);
+    },
+    load: async function(slug){
+      var j = await GH.get(fileUrl(slug));
+      if (!j){ delete shas[slug]; return null; }
+      shas[slug] = j.sha;
+      return JSON.parse(b64decode(j.content));
+    },
+    save: async function(slug, data, retry, keepalive){
+      var body = { message: (shas[slug] ? "Update " : "Create ") + slug, content: b64encode(JSON.stringify(data, null, 1)) };
+      if (shas[slug]) body.sha = shas[slug];
+      var r = await api(fileUrl(slug), { method: "PUT", body: body, keepalive: keepalive });
+      if ((r.status === 409 || r.status === 422) && !retry){
+        var j = await GH.get(fileUrl(slug));
+        if (j) shas[slug] = j.sha; else delete shas[slug];
+        return GH.save(slug, data, true, keepalive);
+      }
+      if (!r.ok) throw { status: r.status };
+      var res = await r.json();
+      shas[slug] = res.content && res.content.sha;
+    },
+    remove: async function(slug){
+      if (!shas[slug]){ var j = await GH.get(fileUrl(slug)); if (!j) return; shas[slug] = j.sha; }
+      var r = await api(fileUrl(slug), { method: "DELETE", body: { message: "Delete " + slug, sha: shas[slug] } });
+      if (!r.ok && r.status !== 404) throw { status: r.status };
+      delete shas[slug];
+    },
+    // A repo used by the earlier single-tracker page has data.json at its root.
+    migrateLegacy: async function(){
+      var j = await GH.get(repoPath() + "/contents/data.json");
+      if (!j) return null;
+      var old; try { old = JSON.parse(b64decode(j.content)); } catch(e){ return null; }
+      var data = normalize(old, LEGACY);
+      await GH.save("prelim", data);
+      return { slug: "prelim", title: data.title };
     }
-    if (!r.ok) throw { status: r.status };
-    var j = await r.json(); remoteSha = j.content && j.content.sha;
-  }
+  };
+
+  var Local = {
+    list: async function(){
+      var idx = LS.get("st2:index:local");
+      if (!idx){
+        idx = [];
+        var old = LS.get("study-tracker-v1");   // browser copy from the earlier page
+        if (hasContent(old)){
+          var d = normalize(old, LEGACY);
+          LS.set("st2:cache:local:prelim", { data: d, dirty: false });
+          idx.push({ slug: "prelim", title: d.title });
+        }
+        LS.set("st2:index:local", idx);
+      }
+      return idx;
+    }
+  };
+
+  // ---------- app state ----------
+  var trackers = [];      // [{slug, title}]
+  var cur = null;         // {slug, data, dirty, rev}
+  var timer = null, saving = false, pending = false, savingP = Promise.resolve();
+
+  var saveEl = document.getElementById("save");
+  function setSave(st, text){ saveEl.dataset.state = st; saveEl.textContent = text; }
+  function has(slug){ return trackers.some(function(t){ return t.slug === slug; }); }
+  function storeIndex(){ trackers.sort(byTitle); LS.set(indexKey(), trackers); }
 
   function touch(){
-    saveLocal(); markDirty(true); renderTally();
-    if (gh){ setSave("saving", "Unsaved changes…"); clearTimeout(timer); timer = setTimeout(flush, 2500); }
-  }
-  function flush(keepalive){
-    if (!gh) return;
-    if (saving){ pending = true; return; }
-    saving = true; setSave("saving", "Saving to GitHub…");
-    push(false, keepalive)
-      .then(function(){ if (!pending) markDirty(false); setSave("saved", "Synced with GitHub"); })
-      .catch(function(e){ setSave("error", errMsg(e && e.status)); })
-      .then(function(){ saving = false; if (pending){ pending = false; flush(); } });
+    if (!cur) return;
+    cur.rev++;
+    renderTally();
+    if (gh){
+      cur.dirty = true;
+      LS.set(cacheKey(cur.slug), { data: cur.data, dirty: true });
+      setSave("saving", "Unsaved changes…");
+      clearTimeout(timer); timer = setTimeout(function(){ flush(); }, 2500);
+    } else {
+      cur.dirty = false;
+      LS.set(cacheKey(cur.slug), { data: cur.data, dirty: false });
+    }
   }
 
-  async function connect(){
-    setSave("saving", "Connecting to GitHub…");
-    try {
-      var rr = await api(repoPath());
-      if (!rr.ok) throw { status: rr.status };
-      var remote = await pull();
-      if (remote && !dirty){
-        state = normalize(remote); saveLocal(); render();
-      } else {
-        await push(false);   // first run, or offline edits waiting to go up
-      }
-      markDirty(false); setSave("saved", "Synced with GitHub");
-      return null;
-    } catch(e){ var m = errMsg(e && e.status); setSave("error", m); return m; }
+  function flush(keepalive){
+    clearTimeout(timer);
+    if (!gh || !cur || !cur.dirty) return savingP;
+    if (saving){ pending = true; return savingP; }
+    saving = true;
+    var target = cur, slug = cur.slug, rev = cur.rev, snap = JSON.parse(JSON.stringify(cur.data));
+    setSave("saving", "Saving to GitHub…");
+    savingP = GH.save(slug, snap, false, keepalive)
+      .then(function(){
+        if (target.rev === rev){
+          target.dirty = false;
+          LS.set(cacheKey(slug), { data: snap, dirty: false });
+        }
+        setSave("saved", "Synced with GitHub");
+      })
+      .catch(function(e){ setSave("error", errMsg(e && e.status)); })
+      .then(function(){
+        saving = false;
+        if (pending || (cur && cur.dirty && cur === target && cur.rev !== rev)){ pending = false; return flush(); }
+      });
+    return savingP;
   }
 
   document.addEventListener("visibilitychange", function(){
-    if (!gh) return;
-    if (document.visibilityState === "hidden"){ if (dirty && !saving){ clearTimeout(timer); flush(true); } }
-    else if (!dirty && !saving){
-      pull().then(function(remote){
-        if (remote && JSON.stringify(normalize(remote)) !== JSON.stringify(state)){ state = normalize(remote); saveLocal(); render(); }
-        setSave("saved", "Synced with GitHub");
-      }).catch(function(e){ setSave("error", errMsg(e && e.status)); });
-    }
+    if (!gh || !cur) return;
+    if (document.visibilityState === "hidden"){ if (cur.dirty) flush(true); return; }
+    if (cur.dirty || saving) return;
+    var slug = cur.slug;
+    GH.load(slug).then(function(remote){
+      if (!cur || cur.slug !== slug || cur.dirty || !remote) return;
+      var fresh = normalize(remote);
+      if (JSON.stringify(fresh) !== JSON.stringify(cur.data)){
+        cur.data = fresh; LS.set(cacheKey(slug), { data: fresh, dirty: false }); render();
+      }
+      setSave("saved", "Synced with GitHub");
+    }).catch(function(e){ setSave("error", errMsg(e && e.status)); });
   });
 
-  // ---------- GitHub settings dialog ----------
-  var dlg = document.getElementById("gh-dialog");
-  var fOwner = document.getElementById("gh-owner"), fRepo = document.getElementById("gh-repo"), fToken = document.getElementById("gh-token");
-  var dlgMsg = document.getElementById("gh-msg"), btnDisconnect = document.getElementById("gh-disconnect");
-  var syncBtn = document.getElementById("sync-btn");
-  function refreshSyncBtn(){ syncBtn.textContent = gh ? "GitHub sync settings" : "Connect GitHub"; btnDisconnect.hidden = !gh; }
-  syncBtn.addEventListener("click", function(){
-    fOwner.value = gh ? gh.owner : ""; fRepo.value = gh ? gh.repo : "study-tracker-data"; fToken.value = gh ? gh.token : "";
-    dlgMsg.textContent = ""; refreshSyncBtn();
-    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open","");
-  });
-  document.getElementById("gh-close").addEventListener("click", function(){ dlg.close ? dlg.close() : dlg.removeAttribute("open"); });
-  document.getElementById("gh-form").addEventListener("submit", async function(e){
-    e.preventDefault();
-    var owner = fOwner.value.trim(), repo = fRepo.value.trim(), token = fToken.value.trim();
-    if (!owner || !repo || !token){ dlgMsg.textContent = "Fill in all three fields."; return; }
-    gh = { owner: owner, repo: repo, token: token };
-    dlgMsg.textContent = "Connecting…";
-    var err = await connect();
-    if (err){ dlgMsg.textContent = err; gh = null; refreshSyncBtn(); return; }
-    try { localStorage.setItem(GH_KEY, JSON.stringify(gh)); } catch(x){}
-    refreshSyncBtn(); dlg.close ? dlg.close() : dlg.removeAttribute("open");
-  });
-  btnDisconnect.addEventListener("click", function(){
-    try { localStorage.removeItem(GH_KEY); } catch(x){}
-    gh = null; remoteSha = null; refreshSyncBtn(); setSave("local", LOCAL_MSG);
-    dlg.close ? dlg.close() : dlg.removeAttribute("open");
-  });
+  function setURL(slug){
+    try {
+      var u = new URL(location.href);
+      if (slug) u.searchParams.set("t", slug); else u.searchParams.delete("t");
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    } catch(e){}
+  }
+  function linkFor(slug){
+    var u = new URL(location.href); u.search = ""; u.hash = ""; u.searchParams.set("t", slug); return u.toString();
+  }
 
-  // ---------- tiny DOM helper ----------
+  async function refreshList(){
+    try { trackers = (await (gh ? GH.list() : Local.list())).slice(); storeIndex(); return null; }
+    catch(e){ trackers = LS.get(indexKey()) || []; return e; }
+  }
+
+  async function openTracker(slug){
+    await flush();
+    var cached = LS.get(cacheKey(slug)), data = null, dirty = false, failed = false;
+    if (gh){
+      setSave("saving", "Loading…");
+      try {
+        var remote = await GH.load(slug);
+        if (cached && cached.dirty){ data = normalize(cached.data); dirty = true; }
+        else if (remote){ data = normalize(remote); }
+      } catch(e){
+        failed = true; setSave("error", errMsg(e && e.status));
+        if (cached){ data = normalize(cached.data); dirty = !!cached.dirty; }
+      }
+    } else if (cached){ data = normalize(cached.data); }
+
+    if (!data){ showMissing(slug); return; }
+    cur = { slug: slug, data: data, dirty: dirty, rev: 0 };
+    LS.set(cacheKey(slug), { data: data, dirty: dirty });
+    LS.set(lastKey(), slug);
+    setURL(slug);
+    renderSelect(); render(); scrollToNow();
+    if (!gh) setSave("local", LOCAL_MSG);
+    else if (dirty) flush();
+    else if (!failed) setSave("saved", "Synced with GitHub");
+  }
+
+  async function pickAndOpen(preferred){
+    var want = preferred || new URLSearchParams(location.search).get("t");
+    var last = LS.get(lastKey());
+    if (want && (has(want) || LS.get(cacheKey(want)))) return openTracker(want);
+    if (want && !preferred){ showMissing(want); return; }
+    var slug = (last && has(last)) ? last : (trackers[0] && trackers[0].slug);
+    if (slug) return openTracker(slug);
+    showEmpty();
+  }
+
+  async function boot(){
+    refreshSyncBtn();
+    setSave("saving", gh ? "Connecting to GitHub…" : "Loading…");
+    var err = await refreshList();
+    if (err) setSave("error", errMsg(err.status));
+    else if (!gh) setSave("local", LOCAL_MSG);
+    renderSelect();
+    await pickAndOpen();
+  }
+
+  // ---------- rendering ----------
+  var board = document.getElementById("board");
+  var emptyEl = document.getElementById("empty");
+  var selectEl = document.getElementById("tracker-select");
+  var papersEl = document.getElementById("papers");
+
   function h(tag, props){
     var el = document.createElement(tag);
     if (props) for (var k in props){
@@ -428,7 +617,7 @@ dialog input:focus{outline:none;border-color:var(--accent)}
       else if (k === "dataset") for (var dk in v) el.dataset[dk] = v[dk];
       else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : v);
     }
-    for (var i=2;i<arguments.length;i++){
+    for (var i = 2; i < arguments.length; i++){
       var ch = arguments[i];
       if (ch == null || ch === false) continue;
       if (Array.isArray(ch)) ch.forEach(function(x){ if (x) el.appendChild(x); });
@@ -436,10 +625,6 @@ dialog input:focus{outline:none;border-color:var(--accent)}
     }
     return el;
   }
-  function isUrl(s){ return /^https?:\/\/\S+$/i.test(s.trim()); }
-
-  // ---------- rendering ----------
-  var board = document.getElementById("board");
 
   function armButton(btn, label, armedLabel, action){
     var armed = false, t;
@@ -447,119 +632,336 @@ dialog input:focus{outline:none;border-color:var(--accent)}
     btn.addEventListener("click", function(){
       if (!armed){
         armed = true; btn.classList.add("armed"); btn.textContent = armedLabel;
-        t = setTimeout(function(){ armed=false; btn.classList.remove("armed"); btn.textContent = label; }, 3000);
-      } else { clearTimeout(t); action(); }
+        t = setTimeout(function(){ armed = false; btn.classList.remove("armed"); btn.textContent = label; }, 3000);
+      } else { clearTimeout(t); armed = false; btn.classList.remove("armed"); btn.textContent = label; action(); }
     });
     return btn;
   }
 
+  function renderSelect(){
+    selectEl.replaceChildren.apply(selectEl, trackers.map(function(t){
+      return h("option", { value: t.slug, text: t.title });
+    }));
+    if (cur && has(cur.slug)) selectEl.value = cur.slug;
+    document.body.classList.toggle("no-list", trackers.length === 0);
+  }
+  selectEl.addEventListener("change", function(){ if (!cur || selectEl.value !== cur.slug) openTracker(selectEl.value); });
+
+  function showEmpty(){
+    cur = null; setURL(null);
+    document.body.classList.add("no-tracker");
+    document.getElementById("t-title").textContent = "Study trackers";
+    document.getElementById("t-dates").textContent = "";
+    document.title = "Study trackers";
+    board.replaceChildren();
+    emptyEl.replaceChildren(h("div", { class: "empty-state" },
+      h("h2", { text: trackers.length ? "Pick a tracker" : "No trackers yet" }),
+      h("p", { text: trackers.length ? "Choose one from the menu above, or start a new one." : "Create a tracker to plan your weeks, topics and resources." }),
+      h("button", { type: "button", class: "primary", onclick: function(){ openTrackerDialog("new"); } }, "Create a tracker")
+    ));
+    renderSelect();
+  }
+  function showMissing(slug){
+    showEmpty();
+    emptyEl.replaceChildren(h("div", { class: "empty-state" },
+      h("h2", { text: "Tracker not found" }),
+      h("p", { text: "There's no tracker with the link name \u201c" + slug + "\u201d" + (gh ? " in " + gh.repo + "." : " in this browser.") +
+        (gh ? "" : " If it's saved on GitHub, connect GitHub first.") }),
+      h("button", { type: "button", class: "primary", onclick: function(){ openTrackerDialog("new"); } }, "Create a tracker")
+    ));
+  }
+
   function linkCell(r){
-    var a = h("a", { href: r.link, target:"_blank", rel:"noopener noreferrer", title:"Open link", "aria-label":"Open link" }, "↗");
+    var a = h("a", { href: r.link.trim(), target: "_blank", rel: "noopener noreferrer", title: "Open link", "aria-label": "Open link" }, "↗");
     if (!isUrl(r.link)) a.hidden = true;
     return a;
   }
 
   function renderResources(topic){
     var tbody = h("tbody");
-    if (!topic.resources.length){
-      tbody.appendChild(h("tr",{class:"none"}, h("td",{colspan:"3", text:"No resources yet"})));
-    }
+    if (!topic.resources.length) tbody.appendChild(h("tr", { class: "none" }, h("td", { colspan: "3", text: "No resources yet" })));
     topic.resources.forEach(function(r){
       var open = linkCell(r);
-      var row = h("tr", null,
-        h("td", null, h("input", { type:"text", value:r.name, placeholder:"Book, lecture, notes…", "aria-label":"Resource name",
-          oninput:function(e){ r.name = e.target.value; touch(); } })),
-        h("td", null, h("input", { type:"text", value:r.link, placeholder:"Link or note", "aria-label":"Link or note",
-          oninput:function(e){ r.link = e.target.value; open.href = r.link.trim(); open.hidden = !isUrl(r.link); touch(); } })),
-        h("td", null, h("div",{class:"act"}, open,
-          h("button",{ type:"button", title:"Remove resource", "aria-label":"Remove resource",
-            onclick:function(){ topic.resources = topic.resources.filter(function(x){ return x !== r; }); touch(); render(); } }, "✕")))
-      );
-      tbody.appendChild(row);
+      tbody.appendChild(h("tr", null,
+        h("td", null, h("input", { type: "text", value: r.name, placeholder: "Book, lecture, notes…", "aria-label": "Resource name",
+          oninput: function(e){ r.name = e.target.value; touch(); } })),
+        h("td", null, h("input", { type: "text", value: r.link, placeholder: "Link or note", "aria-label": "Link or note",
+          oninput: function(e){ r.link = e.target.value; open.href = r.link.trim(); open.hidden = !isUrl(r.link); touch(); } })),
+        h("td", null, h("div", { class: "act" }, open,
+          h("button", { type: "button", title: "Remove resource", "aria-label": "Remove resource",
+            onclick: function(){ topic.resources = topic.resources.filter(function(x){ return x !== r; }); touch(); render(); } }, "✕")))
+      ));
     });
-    return h("table",{class:"res"},
-      h("colgroup",null, h("col",{class:"c-name"}), h("col"), h("col",{class:"c-act"})),
-      h("thead",null, h("tr",null, h("th",{text:"Resource"}), h("th",{text:"Link / note"}), h("th"))),
+    return h("table", { class: "res" },
+      h("colgroup", null, h("col", { class: "c-name" }), h("col"), h("col", { class: "c-act" })),
+      h("thead", null, h("tr", null, h("th", { text: "Resource" }), h("th", { text: "Link / note" }), h("th"))),
       tbody
     );
   }
 
   function renderTopic(t, wi){
-    var bar = h("button",{ type:"button", class:"bar", dataset:{s:String(t.status)},
-      "aria-label":"Status: " + STATUS[t.status] + ". Click to change.",
-      onclick:function(){ t.status = (t.status+1)%3; touch(); render(); } }, h("i"));
-    var seg = h("div",{class:"seg", role:"group", "aria-label":"Status"},
+    var weeks = cur.data.weeks;
+    var bar = h("button", { type: "button", class: "bar", dataset: { s: String(t.status) },
+      "aria-label": "Status: " + STATUS[t.status] + ". Click to change.",
+      onclick: function(){ t.status = (t.status + 1) % 3; touch(); render(); } }, h("i"));
+    var seg = h("div", { class: "seg", role: "group", "aria-label": "Status" },
       STATUS.map(function(label, s){
-        return h("button",{ type:"button", dataset:{s:String(s)}, "aria-pressed": String(t.status===s),
-          onclick:function(){ t.status = s; touch(); render(); } }, label);
+        return h("button", { type: "button", dataset: { s: String(s) }, "aria-pressed": String(t.status === s),
+          onclick: function(){ t.status = s; touch(); render(); } }, label);
       }));
-    var remove = armButton(h("button",{type:"button", class:"icon-btn"}), "Remove", "Confirm", function(){
-      state.weeks[wi] = state.weeks[wi].filter(function(x){ return x !== t; }); touch(); render();
+    var remove = armButton(h("button", { type: "button", class: "icon-btn" }), "Remove", "Confirm", function(){
+      weeks[wi] = weeks[wi].filter(function(x){ return x !== t; }); touch(); render();
     });
-    return h("div",{class:"topic", dataset:{id:t.id}},
-      h("div",{class:"topic-row"},
-        h("input",{ type:"text", class:"topic-name", value:t.title, placeholder:"Topic name", "aria-label":"Topic name",
-          oninput:function(e){ t.title = e.target.value; touch(); } }),
-        remove
-      ),
-      bar, seg,
-      renderResources(t),
-      h("button",{ type:"button", class:"icon-btn add-res",
-        onclick:function(){
-          var r = { id:uid(), name:"", link:"" }; t.resources.push(r); touch(); render();
-          var el = board.querySelector('[data-id="'+t.id+'"] tbody tr:last-child input'); if (el) el.focus();
+    return h("div", { class: "topic", dataset: { id: t.id } },
+      h("div", { class: "topic-row" },
+        h("input", { type: "text", class: "topic-name", value: t.title, placeholder: "Topic name", "aria-label": "Topic name",
+          oninput: function(e){ t.title = e.target.value; touch(); } }),
+        remove),
+      bar, seg, renderResources(t),
+      h("button", { type: "button", class: "icon-btn add-res",
+        onclick: function(){
+          t.resources.push({ id: uid(), name: "", link: "" }); touch(); render();
+          var el = board.querySelector('[data-id="' + t.id + '"] tbody tr:last-child input'); if (el) el.focus();
         } }, "+ Add resource")
     );
   }
 
-  function renderWeek(topics, wi){
-    var r = weekRange(wi);
-    return h("section",{ class:"week" + (wi===NOW ? " now":""), "aria-label":"Week " + (wi+1) },
-      h("div",{class:"week-head"},
-        h("h2",null, "Week " + (wi+1), wi===NOW ? h("span",{class:"badge", text:"this week"}) : null),
-        h("span",{class:"dates", text: fmt(r.s) + " – " + fmt(r.e)})
-      ),
-      h("div",{class:"topics"},
+  function renderWeek(topics, wi, now){
+    var r = weekRange(cur.data, wi);
+    return h("section", { class: "week" + (wi === now ? " now" : ""), "aria-label": "Week " + (wi + 1) },
+      h("div", { class: "week-head" },
+        h("h2", null, "Week " + (wi + 1), wi === now ? h("span", { class: "badge", text: "this week" }) : null),
+        h("span", { class: "dates", text: fmt(r.s) + " – " + fmt(r.e) })),
+      h("div", { class: "topics" },
         topics.length ? topics.map(function(t){ return renderTopic(t, wi); })
-                      : h("div",{class:"empty", text:"Nothing planned yet."})
-      ),
-      h("button",{ type:"button", class:"add-topic",
-        onclick:function(){
-          var t = blankTopic(); state.weeks[wi].push(t); touch(); render();
-          var el = board.querySelector('[data-id="'+t.id+'"] .topic-name'); if (el) el.focus();
+                      : h("div", { class: "empty", text: "Nothing planned yet." })),
+      h("button", { type: "button", class: "add-topic",
+        onclick: function(){
+          var t = blankTopic(); cur.data.weeks[wi].push(t); touch(); render();
+          var el = board.querySelector('[data-id="' + t.id + '"] .topic-name'); if (el) el.focus();
         } }, "+ Add topic")
     );
   }
 
   function renderTally(){
-    var c=[0,0,0];
-    state.weeks.forEach(function(w){ w.forEach(function(t){ c[t.status]++; }); });
+    var c = [0,0,0];
+    if (cur) cur.data.weeks.forEach(function(w){ w.forEach(function(t){ c[t.status]++; }); });
     document.getElementById("t-todo").textContent = c[0];
     document.getElementById("t-prog").textContent = c[1];
     document.getElementById("t-done").textContent = c[2];
   }
 
-  var papersEl = document.getElementById("papers");
-  function setPapers(n){ state.papers = Math.max(0, n|0); papersEl.value = state.papers; touch(); }
-  papersEl.addEventListener("input", function(){ var n = parseInt(papersEl.value,10); state.papers = isNaN(n) ? 0 : Math.max(0,n); touch(); });
-  papersEl.addEventListener("blur", function(){ papersEl.value = state.papers; });
-  document.getElementById("p-up").addEventListener("click", function(){ setPapers(state.papers+1); });
-  document.getElementById("p-down").addEventListener("click", function(){ setPapers(state.papers-1); });
-
   function render(){
-    board.replaceChildren.apply(board, state.weeks.map(renderWeek));
-    papersEl.value = state.papers;
+    if (!cur) return;
+    var d = cur.data, now = currentWeek(d);
+    document.body.classList.remove("no-tracker");
+    emptyEl.replaceChildren();
+    document.getElementById("t-title").textContent = d.title;
+    document.getElementById("t-dates").textContent =
+      fmtLong(parseISO(d.start)) + " to " + fmtLong(parseISO(d.end)) + ", " + d.weeks.length + (d.weeks.length === 1 ? " week" : " weeks");
+    document.title = d.title;
+    board.replaceChildren.apply(board, d.weeks.map(function(w, i){ return renderWeek(w, i, now); }));
+    papersEl.value = d.papers;
     renderTally();
   }
-
-  render();
-  refreshSyncBtn();
-  if (gh) connect(); else setSave("local", LOCAL_MSG);
-  // bring the current week into view on first load
-  if (NOW > 0){
-    var col = board.children[NOW], wrap = document.getElementById("wrap");
-    if (col) wrap.scrollLeft = Math.max(0, col.offsetLeft - 24);
+  function scrollToNow(){
+    if (!cur) return;
+    var now = currentWeek(cur.data), wrap = document.getElementById("wrap");
+    var col = now > 0 ? board.children[now] : null;
+    wrap.scrollLeft = col ? Math.max(0, col.offsetLeft - 24) : 0;
   }
+
+  // ---------- papers ----------
+  function setPapers(n){ if (!cur) return; cur.data.papers = Math.max(0, n | 0); papersEl.value = cur.data.papers; touch(); }
+  papersEl.addEventListener("input", function(){
+    if (!cur) return;
+    var n = parseInt(papersEl.value, 10); cur.data.papers = isNaN(n) ? 0 : Math.max(0, n); touch();
+  });
+  papersEl.addEventListener("blur", function(){ if (cur) papersEl.value = cur.data.papers; });
+  document.getElementById("p-up").addEventListener("click", function(){ if (cur) setPapers(cur.data.papers + 1); });
+  document.getElementById("p-down").addEventListener("click", function(){ if (cur) setPapers(cur.data.papers - 1); });
+
+  // ---------- dialogs ----------
+  function openDlg(d){ if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+  function closeDlg(d){ if (d.close) d.close(); else d.removeAttribute("open"); }
+
+  // GitHub sync dialog
+  var ghDlg = document.getElementById("gh-dialog");
+  var fOwner = document.getElementById("gh-owner"), fRepo = document.getElementById("gh-repo"), fToken = document.getElementById("gh-token");
+  var ghMsg = document.getElementById("gh-msg"), btnDisconnect = document.getElementById("gh-disconnect");
+  var syncBtn = document.getElementById("sync-btn");
+  function refreshSyncBtn(){ syncBtn.textContent = gh ? "GitHub sync settings" : "Connect GitHub"; btnDisconnect.hidden = !gh; }
+  syncBtn.addEventListener("click", function(){
+    fOwner.value = gh ? gh.owner : ""; fRepo.value = gh ? gh.repo : ""; fToken.value = gh ? gh.token : "";
+    ghMsg.textContent = ""; refreshSyncBtn(); openDlg(ghDlg);
+  });
+  document.getElementById("gh-close").addEventListener("click", function(){ closeDlg(ghDlg); });
+  document.getElementById("gh-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var owner = fOwner.value.trim(), repo = fRepo.value.trim(), token = fToken.value.trim();
+    if (!owner || !repo || !token){ ghMsg.textContent = "Fill in all three fields."; return; }
+    ghMsg.textContent = "Connecting…";
+    await flush();
+    var prev = gh, prevShas = shas;
+    var localList = prev ? [] : await Local.list();
+    gh = { owner: owner, repo: repo, token: token }; shas = {};
+    try { await GH.check(); }
+    catch(err){ gh = prev; shas = prevShas; ghMsg.textContent = errMsg(err && err.status); return; }
+    var listErr = await refreshList();
+    if (listErr){ gh = prev; shas = prevShas; await refreshList(); ghMsg.textContent = errMsg(listErr.status); return; }
+    // First connection to an empty repo: upload the trackers kept in this browser.
+    if (!trackers.length && localList.length){
+      ghMsg.textContent = "Uploading your trackers…";
+      try {
+        for (var i = 0; i < localList.length; i++){
+          var c = LS.get("st2:cache:local:" + localList[i].slug);
+          if (!c) continue;
+          var d = normalize(c.data);
+          await GH.save(localList[i].slug, d);
+          LS.set(cacheKey(localList[i].slug), { data: d, dirty: false });
+          trackers.push({ slug: localList[i].slug, title: d.title });
+        }
+        storeIndex();
+      } catch(err2){ ghMsg.textContent = errMsg(err2 && err2.status); }
+    }
+    LS.set("st2:gh", gh);
+    refreshSyncBtn(); closeDlg(ghDlg);
+    renderSelect();
+    var keep = cur && has(cur.slug) ? cur.slug : null;
+    cur = null;
+    await pickAndOpen(keep || undefined);
+  });
+  btnDisconnect.addEventListener("click", async function(){
+    await flush();
+    LS.del("st2:gh"); gh = null; shas = {}; cur = null;
+    refreshSyncBtn(); closeDlg(ghDlg);
+    await refreshList(); renderSelect();
+    setSave("local", LOCAL_MSG);
+    await pickAndOpen(LS.get(lastKey()) || undefined);
+  });
+
+  // Tracker dialog (new / settings)
+  var trDlg = document.getElementById("tr-dialog"), trMode = "new", slugTouched = false;
+  var tName = document.getElementById("tr-name"), tStart = document.getElementById("tr-start"), tEnd = document.getElementById("tr-end");
+  var tSlug = document.getElementById("tr-slug"), tSlugWrap = document.getElementById("tr-slug-wrap");
+  var tWeeks = document.getElementById("tr-weeks"), tLink = document.getElementById("tr-link"), tMsg = document.getElementById("tr-msg");
+  var tSubmit = document.getElementById("tr-submit"), tDelete = document.getElementById("tr-delete");
+
+  function updateWeeksNote(){
+    var s = parseISO(tStart.value), e = parseISO(tEnd.value);
+    if (!s || !e){ tWeeks.textContent = ""; return; }
+    var days = dayDiff(s, e) + 1;
+    if (days < 7){ tWeeks.textContent = "Pick an end date at least a week after the start."; return; }
+    var n = Math.floor(days / 7), extra = days - n * 7;
+    tWeeks.textContent = n + (n === 1 ? " week" : " weeks") + (extra ? ". The last week also covers the " + extra + " leftover day" + (extra === 1 ? "" : "s") + "." : ".");
+  }
+  function updateLinkLine(){
+    var slug = trMode === "new" ? tSlug.value.trim() : (cur && cur.slug);
+    tLink.replaceChildren();
+    if (!slug || !validSlug(slug)) return;
+    var url = linkFor(slug);
+    tLink.append("Link: ", h("b", { text: url }));
+    if (trMode === "edit"){
+      var copy = h("button", { type: "button", class: "icon-btn", onclick: function(){
+        if (navigator.clipboard) navigator.clipboard.writeText(url).then(function(){ copy.textContent = "Copied"; }, function(){});
+      } }, "Copy");
+      tLink.append(copy);
+    }
+  }
+  tName.addEventListener("input", function(){ if (trMode === "new" && !slugTouched){ tSlug.value = slugify(tName.value); updateLinkLine(); } });
+  tSlug.addEventListener("input", function(){ slugTouched = true; updateLinkLine(); });
+  tStart.addEventListener("input", updateWeeksNote);
+  tEnd.addEventListener("input", updateWeeksNote);
+
+  var deleteArmed = false, deleteTimer;
+  function resetDelete(){ deleteArmed = false; clearTimeout(deleteTimer); tDelete.textContent = "Delete tracker"; tDelete.classList.remove("armed"); }
+
+  function openTrackerDialog(mode){
+    trMode = mode; slugTouched = false; tMsg.textContent = ""; resetDelete();
+    if (mode === "new"){
+      var today = new Date(); today.setHours(0,0,0,0);
+      document.getElementById("tr-title").textContent = "New tracker";
+      tName.value = ""; tStart.value = toISO(today); tEnd.value = toISO(addDays(today, 7*15 - 1));
+      tSlug.value = ""; tSlugWrap.hidden = false; tSubmit.textContent = "Create"; tDelete.hidden = true;
+    } else {
+      document.getElementById("tr-title").textContent = "Tracker settings";
+      tName.value = cur.data.title; tStart.value = cur.data.start; tEnd.value = cur.data.end;
+      tSlugWrap.hidden = true; tSubmit.textContent = "Save changes"; tDelete.hidden = false;
+    }
+    updateWeeksNote(); updateLinkLine(); openDlg(trDlg);
+    tName.focus();
+  }
+  document.getElementById("new-btn").addEventListener("click", function(){ openTrackerDialog("new"); });
+  document.getElementById("settings-btn").addEventListener("click", function(){ if (cur) openTrackerDialog("edit"); });
+  document.getElementById("tr-close").addEventListener("click", function(){ closeDlg(trDlg); });
+
+  document.getElementById("tr-form").addEventListener("submit", async function(e){
+    e.preventDefault();
+    var title = tName.value.trim(), start = tStart.value, end = tEnd.value;
+    if (!title){ tMsg.textContent = "Give the tracker a name."; return; }
+    if (!parseISO(start) || !parseISO(end) || dayDiff(parseISO(start), parseISO(end)) < 6){
+      tMsg.textContent = "Pick an end date at least a week after the start."; return;
+    }
+    var n = weekCount(start, end);
+    if (n > 104){ tMsg.textContent = "Keep it to two years or less."; return; }
+
+    if (trMode === "new"){
+      var slug = tSlug.value.trim();
+      if (!validSlug(slug)){ tMsg.textContent = "Use lowercase letters, numbers and hyphens for the link name."; return; }
+      if (has(slug)){ tMsg.textContent = "You already have a tracker with that link name."; return; }
+      await flush();
+      var data = normalize({ title: title, start: start, end: end });
+      data.weeks[0].push(blankTopic());
+      trackers.push({ slug: slug, title: title }); storeIndex();
+      cur = { slug: slug, data: data, dirty: !!gh, rev: 1 };
+      LS.set(cacheKey(slug), { data: data, dirty: !!gh });
+      LS.set(lastKey(), slug);
+      setURL(slug); closeDlg(trDlg);
+      renderSelect(); render(); scrollToNow();
+      if (gh) flush(); else setSave("local", LOCAL_MSG);
+      return;
+    }
+
+    // edit
+    var weeks = cur.data.weeks, lastUsed = -1;
+    for (var i = 0; i < weeks.length; i++) if (weeks[i].length) lastUsed = i;
+    if (n < lastUsed + 1){
+      tMsg.textContent = (n + 1 === lastUsed + 1 ? "Week " + (lastUsed + 1) : "Weeks " + (n + 1) + "–" + (lastUsed + 1)) +
+        " still " + (n + 1 === lastUsed + 1 ? "has" : "have") + " topics. Remove them first, or pick a later end date.";
+      return;
+    }
+    cur.data.title = title; cur.data.start = start; cur.data.end = end;
+    while (weeks.length < n) weeks.push([]);
+    weeks.length = n;
+    trackers.forEach(function(t){ if (t.slug === cur.slug) t.title = title; });
+    storeIndex(); closeDlg(trDlg);
+    renderSelect(); render(); touch();
+  });
+
+  tDelete.addEventListener("click", async function(){
+    if (!deleteArmed){
+      deleteArmed = true; tDelete.textContent = "Confirm delete"; tDelete.classList.add("armed");
+      tMsg.textContent = gh ? "This removes the tracker's file from GitHub. Its commit history stays in the repo." : "This removes the tracker from this browser.";
+      deleteTimer = setTimeout(function(){ resetDelete(); tMsg.textContent = ""; }, 4000);
+      return;
+    }
+    resetDelete();
+    var slug = cur.slug;
+    clearTimeout(timer); cur.dirty = false;
+    await savingP;
+    if (gh){
+      try { await GH.remove(slug); }
+      catch(err){ tMsg.textContent = errMsg(err && err.status); return; }
+    }
+    LS.del(cacheKey(slug));
+    trackers = trackers.filter(function(t){ return t.slug !== slug; }); storeIndex();
+    if (LS.get(lastKey()) === slug) LS.del(lastKey());
+    cur = null; closeDlg(trDlg); renderSelect();
+    if (trackers.length) await openTracker(trackers[0].slug); else showEmpty();
+    if (!gh) setSave("local", LOCAL_MSG);
+  });
+
+  boot();
 })();
 </script>
 </body>
